@@ -1,0 +1,5 @@
+{
+  "name": "ChronoMerge PDF",
+  "description": "Merge images and PDF files into a single PDF in chronological order.",
+  "requestFramePermissions": []
+}
