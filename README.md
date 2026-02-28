@@ -50,18 +50,6 @@ npm run build
 ```
 The output will be in the `dist/` directory.
 
-## 🌐 Deployment to Netlify
-
-1. **Push to GitHub**: Create a new repository on GitHub and push your code.
-2. **Connect to Netlify**:
-   - Log in to [Netlify](https://www.netlify.com/).
-   - Click **Add new site** > **Import an existing project**.
-   - Select **GitHub** and choose your repository.
-3. **Configure Build Settings**:
-   - **Build command**: `npm run build`
-   - **Publish directory**: `dist`
-4. **Deploy**: Click **Deploy site**.
-
 ## 📄 License
 
 This project is licensed under the Apache-2.0 License.
