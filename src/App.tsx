@@ -16,14 +16,20 @@ import {
   AlertCircle,
   Loader2,
   CheckCircle2,
-  ArrowUpDown
+  ArrowUpDown,
+  GripVertical,
+  Calendar,
+  Eye,
+  X,
+  FileSpreadsheet,
+  FileCode
 } from 'lucide-react';
-import { motion, AnimatePresence } from 'motion/react';
+import { motion, AnimatePresence, Reorder } from 'motion/react';
 
 interface FileWithMetadata {
   id: string;
   file: File;
-  type: 'pdf' | 'image';
+  type: 'pdf' | 'image' | 'docs' | 'excel';
   timestamp: number;
   preview?: string;
 }
@@ -33,6 +39,7 @@ export default function App() {
   const [isMerging, setIsMerging] = useState(false);
   const [mergedPdfUrl, setMergedPdfUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [previewFile, setPreviewFile] = useState<FileWithMetadata | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -46,23 +53,37 @@ export default function App() {
       .filter(file => {
         const isPdf = file.type === 'application/pdf';
         const isImage = file.type.startsWith('image/');
-        return isPdf || isImage;
+        const isDocs = file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' || file.type === 'application/msword';
+        const isExcel = file.type === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' || file.type === 'application/vnd.ms-excel';
+        return isPdf || isImage || isDocs || isExcel;
       })
-      .map(file => ({
-        id: Math.random().toString(36).substring(7),
-        file,
-        type: file.type === 'application/pdf' ? 'pdf' : 'image',
-        timestamp: file.lastModified,
-        preview: file.type.startsWith('image/') ? URL.createObjectURL(file) : undefined
-      }));
+      .map(file => {
+        let type: 'pdf' | 'image' | 'docs' | 'excel' = 'image';
+        if (file.type === 'application/pdf') type = 'pdf';
+        else if (file.type.includes('word') || file.type.includes('msword')) type = 'docs';
+        else if (file.type.includes('sheet') || file.type.includes('excel')) type = 'excel';
+        
+        return {
+          id: Math.random().toString(36).substring(7),
+          file,
+          type,
+          timestamp: file.lastModified,
+          preview: (type === 'image' || type === 'pdf') ? URL.createObjectURL(file) : undefined
+        };
+      });
 
     if (validFiles.length < newFiles.length) {
-      setError('Some files were skipped. Only PDF and Image files are supported.');
+      setError('Some files were skipped. Supported: PDF, Images, Word, and Excel.');
     } else {
       setError(null);
     }
 
     setFiles(prev => [...prev, ...validFiles].sort((a, b) => a.timestamp - b.timestamp));
+    setMergedPdfUrl(null);
+  };
+
+  const sortByDate = () => {
+    setFiles(prev => [...prev].sort((a, b) => a.timestamp - b.timestamp));
     setMergedPdfUrl(null);
   };
 
@@ -92,6 +113,11 @@ export default function App() {
       const mergedPdf = await PDFDocument.create();
 
       for (const item of files) {
+        if (item.type !== 'pdf' && item.type !== 'image') {
+          // Skip docs/excel for merging as client-side conversion is complex
+          // and the original request was for images and pdfs.
+          continue;
+        }
         const fileBytes = await item.file.arrayBuffer();
 
         if (item.type === 'pdf') {
@@ -224,28 +250,62 @@ export default function App() {
               className="bg-white rounded-3xl shadow-sm border border-black/5 overflow-hidden mb-8"
             >
               <div className="p-6 border-bottom border-black/5 flex items-center justify-between bg-neutral-50/50">
-                <div className="flex items-center gap-2 text-sm font-medium text-neutral-500">
-                  <Clock className="w-4 h-4" />
-                  Chronological Order
+                <div className="flex items-center gap-4">
+                  <div className="flex items-center gap-2 text-sm font-medium text-neutral-500">
+                    <ArrowUpDown className="w-4 h-4" />
+                    Drag to reorder
+                  </div>
+                  <button 
+                    onClick={sortByDate}
+                    className="flex items-center gap-1.5 text-xs font-semibold text-emerald-600 hover:text-emerald-700 transition-colors uppercase tracking-wider"
+                  >
+                    <Calendar className="w-3.5 h-3.5" />
+                    Sort by Date
+                  </button>
                 </div>
                 <div className="text-xs text-neutral-400 uppercase tracking-wider font-semibold">
                   {files.length} {files.length === 1 ? 'File' : 'Files'}
                 </div>
               </div>
 
-              <div className="divide-y divide-black/5">
+              <Reorder.Group 
+                axis="y" 
+                values={files} 
+                onReorder={setFiles}
+                className="divide-y divide-black/5"
+              >
                 {files.map((item) => (
-                  <motion.div
+                  <Reorder.Item
                     key={item.id}
-                    layout
+                    value={item}
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0, x: -20 }}
-                    className="p-4 flex items-center gap-4 hover:bg-neutral-50 transition-colors group"
+                    className="p-4 flex items-center gap-4 bg-white hover:bg-neutral-50 transition-colors group cursor-pointer"
+                    onClick={() => setPreviewFile(item)}
                   >
-                    <div className="w-12 h-12 rounded-lg bg-neutral-100 flex items-center justify-center shrink-0 overflow-hidden">
+                    <div 
+                      className="text-neutral-300 group-hover:text-neutral-400 transition-colors cursor-grab active:cursor-grabbing p-1"
+                      onPointerDown={(e) => e.stopPropagation()}
+                    >
+                      <GripVertical className="w-5 h-5" />
+                    </div>
+                    <div className="w-12 h-12 rounded-lg bg-neutral-100 flex items-center justify-center shrink-0 overflow-hidden border border-black/5">
                       {item.type === 'pdf' ? (
-                        <FileText className="w-6 h-6 text-neutral-400" />
+                        <div className="flex flex-col items-center justify-center">
+                          <FileText className="w-6 h-6 text-red-500" />
+                          <span className="text-[8px] font-bold text-red-600 mt-0.5">PDF</span>
+                        </div>
+                      ) : item.type === 'excel' ? (
+                        <div className="flex flex-col items-center justify-center">
+                          <FileSpreadsheet className="w-6 h-6 text-emerald-600" />
+                          <span className="text-[8px] font-bold text-emerald-600 mt-0.5">XLSX</span>
+                        </div>
+                      ) : item.type === 'docs' ? (
+                        <div className="flex flex-col items-center justify-center">
+                          <FileCode className="w-6 h-6 text-indigo-500" />
+                          <span className="text-[8px] font-bold text-indigo-600 mt-0.5">DOCX</span>
+                        </div>
                       ) : (
                         item.preview ? (
                           <img src={item.preview} alt="preview" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
@@ -260,19 +320,40 @@ export default function App() {
                         {formatDate(item.timestamp)}
                       </p>
                     </div>
-                    <button
-                      onClick={() => removeFile(item.id)}
-                      className="p-2 text-neutral-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all opacity-0 group-hover:opacity-100"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </motion.div>
+                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setPreviewFile(item);
+                        }}
+                        className="p-2 text-neutral-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-all"
+                        title="Preview"
+                      >
+                        <Eye className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          removeFile(item.id);
+                        }}
+                        className="p-2 text-neutral-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
+                        title="Remove"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </Reorder.Item>
                 ))}
-              </div>
+              </Reorder.Group>
 
               <div className="p-6 bg-neutral-50/50 border-t border-black/5 flex justify-end gap-4">
                 <button
-                  onClick={() => setFiles([])}
+                  onClick={() => {
+                    files.forEach(f => {
+                      if (f.preview) URL.revokeObjectURL(f.preview);
+                    });
+                    setFiles([]);
+                  }}
                   className="px-6 py-2.5 text-sm font-medium text-neutral-500 hover:text-neutral-800 transition-colors"
                 >
                   Clear All
@@ -341,6 +422,94 @@ export default function App() {
           </motion.div>
         )}
       </div>
+
+      {/* Preview Modal */}
+      <AnimatePresence>
+        {previewFile && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 md:p-8 bg-black/60 backdrop-blur-sm"
+            onClick={() => setPreviewFile(null)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="bg-white rounded-3xl w-full max-w-5xl max-h-full overflow-hidden flex flex-col shadow-2xl"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="p-4 border-b border-black/5 flex items-center justify-between bg-neutral-50">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-white shadow-sm flex items-center justify-center border border-black/5">
+                    {previewFile.type === 'pdf' ? <FileText className="w-5 h-5 text-red-500" /> : 
+                     previewFile.type === 'image' ? <ImageIcon className="w-5 h-5 text-blue-500" /> :
+                     previewFile.type === 'excel' ? <FileSpreadsheet className="w-5 h-5 text-emerald-600" /> :
+                     <FileCode className="w-5 h-5 text-indigo-500" />}
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-sm truncate max-w-[200px] md:max-w-md">{previewFile.file.name}</h3>
+                    <p className="text-[10px] text-neutral-400 uppercase tracking-wider font-bold">{previewFile.type}</p>
+                  </div>
+                </div>
+                <button 
+                  onClick={() => setPreviewFile(null)}
+                  className="p-2 hover:bg-neutral-200 rounded-full transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              
+              <div className="flex-1 overflow-auto p-4 md:p-8 bg-neutral-100 flex justify-center min-h-[300px]">
+                {previewFile.type === 'image' && previewFile.preview ? (
+                  <div className="flex items-start justify-center w-full">
+                    <img 
+                      src={previewFile.preview} 
+                      alt="preview" 
+                      className="max-w-full h-auto shadow-2xl rounded-lg" 
+                      referrerPolicy="no-referrer"
+                    />
+                  </div>
+                ) : previewFile.type === 'pdf' && previewFile.preview ? (
+                  <iframe 
+                    src={previewFile.preview} 
+                    className="w-full h-full min-h-[70vh] rounded-lg border-none shadow-lg bg-white"
+                    title="PDF Preview"
+                  />
+                ) : (
+                  <div className="text-center p-12 bg-white rounded-2xl shadow-sm border border-black/5 max-w-md">
+                    <div className="w-16 h-16 bg-neutral-50 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                      {previewFile.type === 'excel' ? <FileSpreadsheet className="w-8 h-8 text-emerald-600" /> : <FileCode className="w-8 h-8 text-indigo-500" />}
+                    </div>
+                    <h4 className="text-lg font-medium mb-2">Preview not available</h4>
+                    <p className="text-sm text-neutral-500 mb-6">
+                      Direct browser preview for {previewFile.type.toUpperCase()} files is limited. 
+                      Please download the file to view its full content.
+                    </p>
+                    <div className="flex flex-col gap-2">
+                      <div className="text-xs text-neutral-400 bg-neutral-50 p-3 rounded-lg text-left">
+                        <p><strong>Size:</strong> {(previewFile.file.size / 1024).toFixed(2)} KB</p>
+                        <p><strong>Type:</strong> {previewFile.file.type || 'Unknown'}</p>
+                        <p><strong>Modified:</strong> {formatDate(previewFile.timestamp)}</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+              
+              <div className="p-4 border-t border-black/5 flex justify-end bg-neutral-50">
+                <button 
+                  onClick={() => setPreviewFile(null)}
+                  className="px-6 py-2 bg-neutral-200 text-neutral-700 rounded-xl text-sm font-medium hover:bg-neutral-300 transition-colors"
+                >
+                  Close
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
