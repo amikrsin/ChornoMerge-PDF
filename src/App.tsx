@@ -281,44 +281,48 @@ export default function App() {
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0, x: -20 }}
-                    className="p-4 flex items-center gap-4 bg-white hover:bg-neutral-50 transition-colors group cursor-pointer"
-                    onClick={() => setPreviewFile(item)}
+                    className="p-4 flex items-center gap-4 bg-white hover:bg-neutral-50 transition-colors group"
                   >
                     <div 
-                      className="text-neutral-300 group-hover:text-neutral-400 transition-colors cursor-grab active:cursor-grabbing p-1"
-                      onPointerDown={(e) => e.stopPropagation()}
+                      className="text-neutral-300 group-hover:text-neutral-400 transition-colors cursor-grab active:cursor-grabbing p-1 shrink-0"
                     >
                       <GripVertical className="w-5 h-5" />
                     </div>
-                    <div className="w-12 h-12 rounded-lg bg-neutral-100 flex items-center justify-center shrink-0 overflow-hidden border border-black/5">
-                      {item.type === 'pdf' ? (
-                        <div className="flex flex-col items-center justify-center">
-                          <FileText className="w-6 h-6 text-red-500" />
-                          <span className="text-[8px] font-bold text-red-600 mt-0.5">PDF</span>
-                        </div>
-                      ) : item.type === 'excel' ? (
-                        <div className="flex flex-col items-center justify-center">
-                          <FileSpreadsheet className="w-6 h-6 text-emerald-600" />
-                          <span className="text-[8px] font-bold text-emerald-600 mt-0.5">XLSX</span>
-                        </div>
-                      ) : item.type === 'docs' ? (
-                        <div className="flex flex-col items-center justify-center">
-                          <FileCode className="w-6 h-6 text-indigo-500" />
-                          <span className="text-[8px] font-bold text-indigo-600 mt-0.5">DOCX</span>
-                        </div>
-                      ) : (
-                        item.preview ? (
-                          <img src={item.preview} alt="preview" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                    
+                    <div 
+                      className="flex flex-1 items-center gap-4 min-w-0 cursor-pointer"
+                      onClick={() => setPreviewFile(item)}
+                    >
+                      <div className="w-12 h-12 rounded-lg bg-neutral-100 flex items-center justify-center shrink-0 overflow-hidden border border-black/5">
+                        {item.type === 'pdf' ? (
+                          <div className="flex flex-col items-center justify-center">
+                            <FileText className="w-6 h-6 text-red-500" />
+                            <span className="text-[8px] font-bold text-red-600 mt-0.5">PDF</span>
+                          </div>
+                        ) : item.type === 'excel' ? (
+                          <div className="flex flex-col items-center justify-center">
+                            <FileSpreadsheet className="w-6 h-6 text-emerald-600" />
+                            <span className="text-[8px] font-bold text-emerald-600 mt-0.5">XLSX</span>
+                          </div>
+                        ) : item.type === 'docs' ? (
+                          <div className="flex flex-col items-center justify-center">
+                            <FileCode className="w-6 h-6 text-indigo-500" />
+                            <span className="text-[8px] font-bold text-indigo-600 mt-0.5">DOCX</span>
+                          </div>
                         ) : (
-                          <ImageIcon className="w-6 h-6 text-neutral-400" />
-                        )
-                      )}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium truncate text-sm">{item.file.name}</p>
-                      <p className="text-xs text-neutral-400 flex items-center gap-1">
-                        {formatDate(item.timestamp)}
-                      </p>
+                          item.preview ? (
+                            <img src={item.preview} alt="preview" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                          ) : (
+                            <ImageIcon className="w-6 h-6 text-neutral-400" />
+                          )
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium truncate text-sm">{item.file.name}</p>
+                        <p className="text-xs text-neutral-400 flex items-center gap-1">
+                          {formatDate(item.timestamp)}
+                        </p>
+                      </div>
                     </div>
                     <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                       <button
